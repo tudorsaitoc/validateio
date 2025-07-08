@@ -1,0 +1,127 @@
+name: Debug Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-gcp:
+    name: Debug GCP Setup
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check GCP Secrets
+      run: |
+        echo "Checking GCP configuration..."
+        echo "GCP_PROJECT_ID length: ${#GCP_PROJECT_ID}"
+        echo "GCP_REGION length: ${#GCP_REGION}"
+        echo "GCP_SA_KEY length: ${#GCP_SA_KEY}"
+        
+        if [ -z "$GCP_PROJECT_ID" ]; then
+          echo "❌ GCP_PROJECT_ID is empty!"
+        else
+          echo "✅ GCP_PROJECT_ID is set"
+        fi
+        
+        if [ -z "$GCP_REGION" ]; then
+          echo "❌ GCP_REGION is empty!"
+        else
+          echo "✅ GCP_REGION is set: $GCP_REGION"
+        fi
+        
+        if [ -z "$GCP_SA_KEY" ]; then
+          echo "❌ GCP_SA_KEY is empty!"
+        else
+          echo "✅ GCP_SA_KEY is set (length: ${#GCP_SA_KEY})"
+        fi
+      env:
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_REGION: ${{ secrets.GCP_REGION }}
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Validate Service Account Key
+      run: |
+        echo "Validating service account key format..."
+        echo "$GCP_SA_KEY" > /tmp/sa-key.json
+        
+        if python3 -m json.tool /tmp/sa-key.json > /dev/null 2>&1; then
+          echo "✅ Service account key is valid JSON"
+          
+          PROJECT_ID=$(python3 -c "import json; print(json.load(open('/tmp/sa-key.json'))['project_id'])" 2>/dev/null || echo "")
+          CLIENT_EMAIL=$(python3 -c "import json; print(json.load(open('/tmp/sa-key.json'))['client_email'])" 2>/dev/null || echo "")
+          
+          echo "Project ID from key: $PROJECT_ID"
+          echo "Client email: $CLIENT_EMAIL"
+          
+          if [ "$PROJECT_ID" != "$GCP_PROJECT_ID" ]; then
+            echo "⚠️  Warning: Project ID in key ($PROJECT_ID) doesn't match GCP_PROJECT_ID secret ($GCP_PROJECT_ID)"
+          fi
+        else
+          echo "❌ Service account key is NOT valid JSON!"
+          echo "First 100 chars: ${GCP_SA_KEY:0:100}"
+        fi
+        
+        rm -f /tmp/sa-key.json
+      env:
+        GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Test GCP Authentication
+      uses: google-github-actions/auth@v2
+      continue-on-error: true
+      id: auth
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Check Auth Result
+      run: |
+        if [ "${{ steps.auth.outcome }}" == "success" ]; then
+          echo "✅ GCP Authentication successful!"
+        else
+          echo "❌ GCP Authentication failed!"
+          echo "Common issues:"
+          echo "1. Service account key is invalid or expired"
+          echo "2. JSON format is incorrect (check for extra quotes or escaping)"
+          echo "3. Service account doesn't have required permissions"
+        fi
+    
+    - name: Test gcloud Commands
+      if: steps.auth.outcome == 'success'
+      run: |
+        echo "Testing gcloud configuration..."
+        
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+        
+        echo "Listing Cloud Run services..."
+        gcloud run services list --region=${{ secrets.GCP_REGION }} || echo "No services found or error"
+        
+        echo "Checking Artifact Registry..."
+        gcloud artifacts repositories list --location=${{ secrets.GCP_REGION }} || echo "No repositories or not enabled"
+    
+    - name: Check Vercel Secrets
+      run: |
+        echo ""
+        echo "Checking Vercel configuration..."
+        
+        if [ -z "$VERCEL_TOKEN" ]; then
+          echo "❌ VERCEL_TOKEN is not set"
+        else
+          echo "✅ VERCEL_TOKEN is set"
+        fi
+        
+        if [ -z "$VERCEL_ORG_ID" ]; then
+          echo "⚠️  VERCEL_ORG_ID is not set (might be optional)"
+        else
+          echo "✅ VERCEL_ORG_ID is set"
+        fi
+        
+        if [ -z "$VERCEL_PROJECT_ID" ]; then
+          echo "⚠️  VERCEL_PROJECT_ID is not set (might be optional)"
+        else
+          echo "✅ VERCEL_PROJECT_ID is set"
+        fi
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

@@ -19,6 +19,7 @@ jobs:
     
     - name: Deploy to Cloud Run directly from source
       uses: google-github-actions/deploy-cloudrun@v2
+      timeout-minutes: 20
       with:
         service: validateio-backend
         source: ./backend
@@ -30,4 +31,4 @@ jobs:
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
           ENVIRONMENT=production
-        flags: --allow-unauthenticated
+        flags: --allow-unauthenticated --timeout=900

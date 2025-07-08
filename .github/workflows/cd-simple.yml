@@ -31,4 +31,4 @@ jobs:
           OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
           ENVIRONMENT=production
-        flags: --allow-unauthenticated --timeout=900
+        flags: --allow-unauthenticated --timeout=900 --force

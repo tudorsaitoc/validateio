@@ -1,0 +1,144 @@
+name: Maintenance
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Maintenance task to run'
+        required: true
+        type: choice
+        options:
+          - cleanup-database
+          - update-search-index
+          - generate-reports
+          - all
+
+jobs:
+  database-cleanup:
+    name: Database Cleanup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.task == 'cleanup-database' || github.event.inputs.task == 'all'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install asyncpg sqlalchemy python-dotenv
+    
+    - name: Run database cleanup
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      run: |
+        cd backend
+        python -c "
+        import asyncio
+        import os
+        from datetime import datetime, timedelta
+        from sqlalchemy.ext.asyncio import create_async_engine
+        
+        async def cleanup():
+            engine = create_async_engine(os.environ['DATABASE_URL'])
+            async with engine.begin() as conn:
+                # Delete old validation results (>90 days)
+                await conn.execute('''
+                    DELETE FROM validation_results 
+                    WHERE created_at < NOW() - INTERVAL '90 days'
+                ''')
+                
+                # Delete orphaned records
+                await conn.execute('''
+                    DELETE FROM report_sections 
+                    WHERE report_id NOT IN (SELECT id FROM validation_reports)
+                ''')
+                
+                # Vacuum analyze for performance
+                await conn.execute('VACUUM ANALYZE')
+            
+            await engine.dispose()
+        
+        asyncio.run(cleanup())
+        "
+
+  update-search-index:
+    name: Update Search Index
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.task == 'update-search-index' || github.event.inputs.task == 'all'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Trigger search index update
+      run: |
+        curl -X POST ${{ secrets.NEXT_PUBLIC_API_URL }}/api/v1/maintenance/reindex \
+          -H "Authorization: Bearer ${{ secrets.MAINTENANCE_API_KEY }}" \
+          -H "Content-Type: application/json"
+
+  generate-reports:
+    name: Generate Analytics Reports
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.task == 'generate-reports' || github.event.inputs.task == 'all'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        pip install -r requirements.txt
+    
+    - name: Generate weekly analytics
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      run: |
+        cd backend
+        python scripts/generate_analytics_report.py --type weekly
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    steps:
+    - name: Check Backend Health
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.NEXT_PUBLIC_API_URL }}/health)
+        if [ $response -ne 200 ]; then
+          echo "Backend health check failed with status $response"
+          exit 1
+        fi
+    
+    - name: Check Frontend Health
+      run: |
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.VERCEL_PROJECT_ID }}.vercel.app/api/health)
+        if [ $response -ne 200 ]; then
+          echo "Frontend health check failed with status $response"
+          exit 1
+        fi
+    
+    - name: Send health check notification on failure
+      if: failure()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: failure
+        text: |
+          Health Check Failed!
+          Backend or Frontend is not responding correctly.
+          Please check the services immediately.
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -1,0 +1,130 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+
+env:
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  BACKEND_SERVICE_NAME: validateio-backend-staging
+  FRONTEND_PROJECT_NAME: validateio-frontend-staging
+
+jobs:
+  deploy-backend-staging:
+    name: Deploy Backend to Staging
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.GCP_PROJECT_ID }}
+    
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Configure Docker for Google Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+    
+    - name: Build Backend Docker Image
+      run: |
+        docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/validateio/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} \
+          -f backend/Dockerfile.prod \
+          backend/
+    
+    - name: Push Backend Docker Image
+      run: |
+        docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/validateio/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }}
+    
+    - name: Deploy to Cloud Run (Staging)
+      run: |
+        gcloud run deploy ${{ env.BACKEND_SERVICE_NAME }} \
+          --image ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/validateio/${{ env.BACKEND_SERVICE_NAME }}:${{ github.sha }} \
+          --region ${{ env.GCP_REGION }} \
+          --platform managed \
+          --allow-unauthenticated \
+          --set-env-vars "DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" \
+          --set-env-vars "SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }}" \
+          --set-env-vars "SUPABASE_ANON_KEY=${{ secrets.STAGING_SUPABASE_ANON_KEY }}" \
+          --set-env-vars "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" \
+          --set-env-vars "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" \
+          --set-env-vars "REDIS_URL=${{ secrets.STAGING_REDIS_URL }}" \
+          --set-env-vars "SENTRY_DSN=${{ secrets.SENTRY_DSN }}" \
+          --set-env-vars "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" \
+          --set-env-vars "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" \
+          --set-env-vars "ENVIRONMENT=staging" \
+          --min-instances 0 \
+          --max-instances 3 \
+          --memory 1Gi \
+          --cpu 1
+
+  deploy-frontend-staging:
+    name: Deploy Frontend to Staging
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install Vercel CLI
+      run: npm install --global vercel@latest
+    
+    - name: Pull Vercel Environment Information
+      run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+      working-directory: ./frontend
+    
+    - name: Build Project Artifacts
+      run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      working-directory: ./frontend
+      env:
+        NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_ENVIRONMENT: staging
+    
+    - name: Deploy to Vercel Staging
+      run: |
+        vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} \
+          --env NEXT_PUBLIC_ENVIRONMENT=staging \
+          --meta githubCommitSha=${{ github.sha }} \
+          --meta githubCommitAuthor=${{ github.actor }} \
+          --meta githubCommitMessage="${{ github.event.head_commit.message }}"
+      working-directory: ./frontend
+
+  run-staging-tests:
+    name: Run E2E Tests on Staging
+    runs-on: ubuntu-latest
+    needs: [deploy-backend-staging, deploy-frontend-staging]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install test dependencies
+      run: |
+        npm install -g playwright
+        playwright install chromium
+    
+    - name: Run E2E tests
+      run: |
+        cd frontend
+        npm run test:e2e:staging
+      env:
+        STAGING_URL: ${{ secrets.STAGING_URL }}
+        TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+        TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}

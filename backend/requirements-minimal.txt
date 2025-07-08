@@ -1,0 +1,23 @@
+# Minimal requirements for testing AI agents without full infrastructure
+
+# Core
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-dotenv==1.0.1
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# AI/LLM
+langchain==0.2.6
+langchain-community==0.2.6
+langchain-openai==0.1.16
+openai==1.35.8
+tiktoken==0.7.0
+
+# API Utilities
+httpx==0.27.0
+python-multipart==0.0.9
+requests==2.32.3
+
+# For web search (optional)
+google-search-results==2.4.2

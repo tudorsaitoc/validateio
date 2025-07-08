@@ -133,7 +133,7 @@ jobs:
     steps:
     - name: Send deployment notification
       uses: 8398a7/action-slack@v3
-      if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+      continue-on-error: true
       with:
         status: ${{ job.status }}
         text: |

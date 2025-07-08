@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Cloud Console fix commands
+# Run these in Google Cloud Shell: https://console.cloud.google.com/
+
+echo "🔧 Cloud Run Authentication Fix Commands"
+echo "======================================="
+echo ""
+echo "Copy and run these commands in Google Cloud Shell:"
+echo ""
+echo "# 1. Set your project"
+echo "gcloud config set project YOUR_PROJECT_ID"
+echo ""
+echo "# 2. Make the service public"
+echo "gcloud run services add-iam-policy-binding validateio-backend \\"
+echo "  --member=\"allUsers\" \\"
+echo "  --role=\"roles/run.invoker\" \\"
+echo "  --region=us-central1"
+echo ""
+echo "# 3. Alternative: Redeploy with public access"
+echo "gcloud run services update validateio-backend \\"
+echo "  --allow-unauthenticated \\"
+echo "  --region=us-central1"
+echo ""
+echo "# 4. Get the service URL"
+echo "gcloud run services describe validateio-backend \\"
+echo "  --region=us-central1 \\"
+echo "  --format='value(status.url)'"
+echo ""
+echo "# 5. Test the health endpoint"
+echo "curl https://YOUR-SERVICE-URL.run.app/health"

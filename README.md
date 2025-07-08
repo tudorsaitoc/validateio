@@ -115,6 +115,35 @@ celery -A app.worker worker --loglevel=info
 - **Weeks 4-8**: MVP development (Current Phase)
 - **Weeks 9-12**: Go-to-market execution
 
+## Deployment
+
+### Quick Deployment Guide
+
+1. **Set up Supabase:**
+   - Create a new Supabase project
+   - Run migrations: `cd backend/supabase && supabase db push`
+   - Copy connection strings to your environment
+
+2. **Deploy Backend:**
+   - Push to GitHub to trigger automated deployment
+   - Or deploy manually to your preferred platform (Vercel, Railway, Render)
+
+3. **Deploy Frontend:**
+   - Connect your GitHub repo to Vercel
+   - Set environment variables in Vercel dashboard
+   - Deploy with one click
+
+4. **Verify Deployment:**
+   ```bash
+   # Test Supabase connection
+   python scripts/test_supabase_connection.py
+   
+   # Test deployed API
+   python scripts/test_deployed_api.py https://your-api-url.com
+   ```
+
+See [DEPLOYMENT_VERIFICATION.md](DEPLOYMENT_VERIFICATION.md) for detailed verification steps.
+
 ## Current Status
 
 ### ✅ Completed
@@ -132,6 +161,7 @@ celery -A app.worker worker --loglevel=info
 - Celery worker configuration and task definitions
 - Validation service with async task processing
 - Enhanced API endpoints with task tracking
+- Deployment verification scripts and documentation
 
 ### 🚧 TODO
 - Complete AI agents (Experiment Generator, Marketing Autopilot)

@@ -14,17 +14,15 @@ RUN pip install --no-cache-dir \
     python-dotenv==1.0.0 \
     httpx==0.25.2
 
-# Copy only essential files first
-COPY main.py .
-COPY app app/
+# Copy all files
+COPY . .
 
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV PORT=8080
 
-# Use the startup script
-COPY start.py .
-RUN chmod +x start.py
+# Create a startup script that uses hybrid main
+RUN echo '#!/usr/bin/env python3\nimport os\nos.environ["PORT"] = os.environ.get("PORT", "8080")\nimport main_hybrid' > start_hybrid.py
 
-# Run the app
-CMD ["python", "start.py"]
+# Run the hybrid app
+CMD ["python", "main_hybrid.py"]

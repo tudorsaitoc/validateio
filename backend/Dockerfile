@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set environment variables
-ENV PORT=8000
+ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
 # Run as non-root
@@ -24,7 +24,7 @@ RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
-# Run the app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the app - use $PORT environment variable
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}

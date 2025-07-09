@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install only essential packages
+RUN pip install --no-cache-dir fastapi uvicorn
+
+# Copy only the simple test file
+COPY simple_test.py .
+
+# Run the simple app
+CMD ["python", "simple_test.py"]

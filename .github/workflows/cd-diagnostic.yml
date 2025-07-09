@@ -1,0 +1,78 @@
+name: Diagnostic CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+    
+    - name: Check project and permissions
+      run: |
+        echo "🔍 Diagnostic Information"
+        echo "========================"
+        
+        # Check current project
+        echo "Current project:"
+        gcloud config get-value project
+        
+        # Set project explicitly
+        gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+        
+        # Check authenticated user
+        echo ""
+        echo "Authenticated as:"
+        gcloud auth list
+        
+        # Check regions
+        echo ""
+        echo "Checking all regions for existing services..."
+        REGIONS="us-central1 us-east1 us-west1 europe-west1"
+        for region in $REGIONS; do
+          echo ""
+          echo "Region: $region"
+          gcloud run services list --region=$region --format="table(name,region)" 2>/dev/null || echo "No access or no services"
+        done
+        
+        # Check the specific region
+        echo ""
+        echo "Services in target region (${{ secrets.GCP_REGION }}):"
+        gcloud run services list --region=${{ secrets.GCP_REGION }} --format="table(name,status,lastModifier)"
+        
+        # Try to describe the specific service
+        echo ""
+        echo "Trying to describe validateio-backend in ${{ secrets.GCP_REGION }}:"
+        gcloud run services describe validateio-backend --region=${{ secrets.GCP_REGION }} --format="yaml" 2>&1 || echo "Service not found"
+        
+        # Check if APIs are enabled
+        echo ""
+        echo "Checking enabled APIs:"
+        gcloud services list --enabled | grep -E "(run|build|artifactregistry)" || echo "Key APIs might not be enabled"
+    
+    - name: Test simple deployment
+      run: |
+        echo ""
+        echo "🚀 Attempting deployment with detailed output..."
+        
+        cd backend
+        
+        # Try deployment with verbose output
+        gcloud run deploy validateio-backend \
+          --source=. \
+          --region=${{ secrets.GCP_REGION }} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --set-env-vars="ENVIRONMENT=production" \
+          --verbosity=debug \
+          2>&1 | tail -100

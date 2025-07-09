@@ -12,7 +12,13 @@ RUN pip install --no-cache-dir \
     pydantic==2.5.3 \
     pydantic-settings==2.1.0 \
     python-dotenv==1.0.0 \
-    httpx==0.25.2
+    httpx==0.25.2 \
+    sqlalchemy==2.0.25 \
+    asyncpg==0.29.0 \
+    python-jose[cryptography]==3.3.0 \
+    passlib[bcrypt]==1.7.4 \
+    supabase==2.3.4 \
+    openai==1.8.0
 
 # Copy all files
 COPY . .

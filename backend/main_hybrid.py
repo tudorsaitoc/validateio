@@ -31,12 +31,35 @@ FEATURES = {
 
 # Try to import full API
 try:
+    # First check if we can import config
+    from app.core.config import settings
+    print(f"✅ Config loaded - Environment: {settings.ENVIRONMENT}")
+    FEATURES["config"] = True
+    
+    # Check database
+    try:
+        from app.db.session import AsyncSessionLocal, engine
+        FEATURES["database"] = True
+        print("✅ Database modules loaded")
+    except Exception as e:
+        print(f"⚠️  Database import failed: {e}")
+    
+    # Check Supabase
+    if settings.SUPABASE_URL:
+        FEATURES["supabase"] = True
+        print("✅ Supabase configured")
+    
+    # Try full API import
     from app.api.v1.api import api_router
     app.include_router(api_router, prefix="/api/v1")
     FEATURES["full_api"] = True
     print("✅ Full API loaded")
+    
 except Exception as e:
     print(f"⚠️  Could not load full API: {e}")
+    print(f"Error type: {type(e).__name__}")
+    import traceback
+    traceback.print_exc()
     print("Running in limited mode")
 
 # Basic endpoints that always work

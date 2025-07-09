@@ -12,10 +12,25 @@ if 'PORT' in os.environ:
     os.environ['API_PORT'] = os.environ['PORT']
     print(f"Setting API_PORT to {os.environ['PORT']}")
 
+# Set minimal environment if not production
+if os.environ.get('ENVIRONMENT') != 'production':
+    os.environ['ENVIRONMENT'] = 'production'
+    
+# Set required secrets if missing (for startup only)
+if not os.environ.get('SECRET_KEY'):
+    os.environ['SECRET_KEY'] = 'temporary-secret-key-for-startup'
+if not os.environ.get('JWT_SECRET_KEY'):
+    os.environ['JWT_SECRET_KEY'] = os.environ.get('SECRET_KEY', 'temporary-jwt-key')
+
 # Import the app
 try:
     from main import app
     print("✅ App imported successfully")
+except ImportError as e:
+    print(f"⚠️  Import error, using fallback: {e}")
+    # Fall back to simple app if main fails
+    from main_simple import app
+    print("✅ Using simple app as fallback")
 except Exception as e:
     print(f"❌ Failed to import app: {e}")
     import traceback

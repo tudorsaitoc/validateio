@@ -18,7 +18,12 @@ RUN pip install --no-cache-dir \
     python-jose[cryptography]==3.3.0 \
     passlib[bcrypt]==1.7.4 \
     supabase==2.3.4 \
-    openai==1.8.0
+    openai==1.8.0 \
+    email-validator==2.1.0 \
+    langchain==0.1.1 \
+    langchain-community==0.0.10 \
+    langchain-openai==0.0.3 \
+    google-search-results==2.4.2
 
 # Copy all files
 COPY . .

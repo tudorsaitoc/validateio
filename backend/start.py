@@ -27,10 +27,15 @@ try:
     from main import app
     print("✅ App imported successfully")
 except ImportError as e:
-    print(f"⚠️  Import error, using fallback: {e}")
-    # Fall back to simple app if main fails
-    from main_simple import app
-    print("✅ Using simple app as fallback")
+    print(f"⚠️  Import error: {e}")
+    # Try hybrid main instead
+    try:
+        from main_hybrid import app
+        print("✅ Using hybrid app as fallback")
+    except:
+        # Last resort - use simple app
+        from main_simple import app
+        print("✅ Using simple app as fallback")
 except Exception as e:
     print(f"❌ Failed to import app: {e}")
     import traceback

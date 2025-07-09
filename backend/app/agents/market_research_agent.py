@@ -17,8 +17,15 @@ from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema import SystemMessage
-from langchain_community.tools import GoogleSerperAPIWrapper
-from langchain_community.utilities import GoogleSearchAPIWrapper
+try:
+    from langchain_community.utilities import GoogleSerperAPIWrapper
+except ImportError:
+    # Fallback if not available
+    GoogleSerperAPIWrapper = None
+try:
+    from langchain_community.utilities import GoogleSearchAPIWrapper
+except ImportError:
+    GoogleSearchAPIWrapper = None
 from langchain_core.tools import Tool
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field

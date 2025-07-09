@@ -4,6 +4,9 @@ from typing import Any, Dict
 
 from app.core.config import settings
 
+# Create logger instance for import
+logger = logging.getLogger(__name__)
+
 
 def setup_logging() -> None:
     """Configure logging for the application."""

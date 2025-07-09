@@ -26,5 +26,8 @@ USER appuser
 # Expose port
 EXPOSE 8080
 
-# Run the app - use $PORT environment variable
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Make startup script executable
+RUN chmod +x start.py
+
+# Run the app using the startup wrapper
+CMD ["python", "start.py"]

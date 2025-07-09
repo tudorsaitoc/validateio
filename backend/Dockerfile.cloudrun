@@ -1,0 +1,27 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies in stages to identify issues
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first
+COPY requirements.txt .
+
+# Install requirements with verbose output
+RUN pip install --no-cache-dir -r requirements.txt || \
+    (echo "Failed to install requirements, trying minimal set..." && \
+     pip install --no-cache-dir fastapi uvicorn pydantic python-dotenv)
+
+# Copy application
+COPY . .
+
+# Create simple startup script
+RUN echo '#!/bin/bash\necho "Starting ValidateIO on port ${PORT:-8080}..."\nuvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}' > /app/start.sh && \
+    chmod +x /app/start.sh
+
+# Don't use non-root user for now (to eliminate permission issues)
+# USER appuser
+
+# Use shell form to ensure PORT variable is expanded
+CMD ["/bin/bash", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]

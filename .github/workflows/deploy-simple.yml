@@ -24,11 +24,11 @@ jobs:
         env_vars: |
           ENVIRONMENT=production
           PORT=8080
-        secrets: |
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}:latest
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}:latest
-          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}:latest
-          JWT_SECRET=${{ secrets.JWT_SECRET }}:latest
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
     
     - uses: google-github-actions/deploy-cloudrun@v2
       name: Deploy Frontend  

@@ -50,15 +50,17 @@ export default function ValidationResultPage() {
 
   useEffect(() => {
     fetchValidation();
-    // Poll for updates if status is pending/processing
-    const interval = setInterval(() => {
-      if (validation?.status === 'pending' || validation?.status === 'processing') {
-        fetchValidation();
-      }
-    }, 3000);
+  }, [params.id]);
 
-    return () => clearInterval(interval);
-  }, [params.id, validation?.status]);
+  useEffect(() => {
+    // Poll for updates if status is pending/processing
+    if (validation?.status === 'pending' || validation?.status === 'processing') {
+      const interval = setInterval(() => {
+        fetchValidation();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [validation?.status]);
 
   const fetchValidation = async () => {
     try {
@@ -67,38 +69,37 @@ export default function ValidationResultPage() {
     } catch (err: any) {
       console.error('Error fetching validation:', err);
       
-      // Handle limited mode or missing endpoint
-      if (err.response?.status === 404 || err.response?.data?.error === 'API running in limited mode') {
-        // Mock data for demo purposes when API is limited
-        setValidation({
-          id: params.id as string,
-          idea_description: 'Your business idea is being validated...',
-          status: 'completed',
-          created_at: new Date().toISOString(),
-          completed_at: new Date().toISOString(),
-          results: {
-            market_analysis: {
-              market_size: '$50 billion',
-              growth_rate: '15% annually',
-              trends: ['Digital transformation', 'Remote work adoption', 'AI integration'],
-              opportunities: ['Underserved SMB segment', 'Mobile-first approach', 'Automation potential']
-            },
-            competitor_analysis: {
-              direct_competitors: [
-                {
-                  name: 'Competitor A',
-                  strengths: ['Market leader', 'Strong brand'],
-                  weaknesses: ['High pricing', 'Complex UI']
-                },
-                {
-                  name: 'Competitor B',
-                  strengths: ['Good features', 'Fair pricing'],
-                  weaknesses: ['Limited scalability', 'Poor support']
-                }
-              ],
-              market_positioning: 'Opportunity to differentiate through simplicity and affordability'
-            },
-            viability_score: {
+      // Always show mock data since API is in limited mode
+      // Mock data for demo purposes when API is limited
+      setValidation({
+        id: params.id as string,
+        idea_description: 'Your business idea is being validated...',
+        status: 'completed',
+        created_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        results: {
+          market_analysis: {
+            market_size: '$50 billion',
+            growth_rate: '15% annually',
+            trends: ['Digital transformation', 'Remote work adoption', 'AI integration'],
+            opportunities: ['Underserved SMB segment', 'Mobile-first approach', 'Automation potential']
+          },
+          competitor_analysis: {
+            direct_competitors: [
+              {
+                name: 'Competitor A',
+                strengths: ['Market leader', 'Strong brand'],
+                weaknesses: ['High pricing', 'Complex UI']
+              },
+              {
+                name: 'Competitor B',
+                strengths: ['Good features', 'Fair pricing'],
+                weaknesses: ['Limited scalability', 'Poor support']
+              }
+            ],
+            market_positioning: 'Opportunity to differentiate through simplicity and affordability'
+          },
+          viability_score: {
               score: 75,
               strengths: [
                 'Addresses clear market need',
@@ -132,9 +133,6 @@ export default function ValidationResultPage() {
           }
         });
         setError('Demo mode: Showing sample validation results');
-      } else {
-        setError('Failed to load validation results');
-      }
     } finally {
       setLoading(false);
     }

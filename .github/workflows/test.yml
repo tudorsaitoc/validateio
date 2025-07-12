@@ -35,5 +35,5 @@ jobs:
     - name: Test Backend
       working-directory: ./backend
       run: |
-        pip install -r requirements.txt || pip install fastapi uvicorn pydantic
+        pip install fastapi uvicorn pydantic httpx pytest pytest-asyncio
         python -m pytest tests/ -v || echo "Tests passed or not found"

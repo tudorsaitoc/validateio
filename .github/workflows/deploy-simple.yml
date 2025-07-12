@@ -1,0 +1,41 @@
+name: Simple Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - uses: google-github-actions/deploy-cloudrun@v2
+      name: Deploy Backend
+      with:
+        service: validateio-backend
+        source: ./backend
+        region: us-central1
+        env_vars: |
+          ENVIRONMENT=production
+          PORT=8080
+        secrets: |
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}:latest
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}:latest
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}:latest
+          JWT_SECRET=${{ secrets.JWT_SECRET }}:latest
+    
+    - uses: google-github-actions/deploy-cloudrun@v2
+      name: Deploy Frontend  
+      with:
+        service: validateio-frontend
+        source: ./frontend
+        region: us-central1
+        env_vars: |
+          PORT=3000
+          NEXT_PUBLIC_API_URL=https://validateio-backend-${{ secrets.GCP_PROJECT_NUMBER }}.us-central1.run.app

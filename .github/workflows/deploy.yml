@@ -30,7 +30,7 @@ jobs:
 
   deploy-frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -43,22 +43,25 @@ jobs:
     
     - name: Build and Deploy Frontend
       working-directory: ./frontend
+      env:
+        PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        REGION: us-central1
       run: |
         # Build and deploy using Cloud Build
         gcloud builds submit . \
-          --tag gcr.io/$PROJECT_ID/validateio-frontend \
+          --tag gcr.io/${PROJECT_ID}/validateio-frontend \
           --timeout=20m
         
         gcloud run deploy validateio-frontend \
-          --image gcr.io/$PROJECT_ID/validateio-frontend \
-          --region $REGION \
+          --image gcr.io/${PROJECT_ID}/validateio-frontend \
+          --region ${REGION} \
           --allow-unauthenticated \
           --port 3000 \
-          --set-env-vars "NEXT_PUBLIC_API_URL=https://validateio-backend-${{ secrets.GCP_PROJECT_NUMBER }}.us-central1.run.app"
+          --set-env-vars "NEXT_PUBLIC_API_URL=https://validateio-backend-${{ secrets.GCP_PROJECT_NUMBER }}.${REGION}.run.app"
 
   deploy-backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -71,15 +74,18 @@ jobs:
     
     - name: Build and Deploy Backend
       working-directory: ./backend
+      env:
+        PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        REGION: us-central1
       run: |
         # Build and deploy using Cloud Build
         gcloud builds submit . \
-          --tag gcr.io/$PROJECT_ID/validateio-backend \
+          --tag gcr.io/${PROJECT_ID}/validateio-backend \
           --timeout=20m
         
         gcloud run deploy validateio-backend \
-          --image gcr.io/$PROJECT_ID/validateio-backend \
-          --region $REGION \
+          --image gcr.io/${PROJECT_ID}/validateio-backend \
+          --region ${REGION} \
           --allow-unauthenticated \
           --port 8080 \
           --memory 1Gi \

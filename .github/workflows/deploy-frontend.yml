@@ -1,0 +1,43 @@
+name: Deploy Frontend Only
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Setup Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+    
+    - name: Deploy Frontend to Cloud Run
+      working-directory: ./frontend
+      run: |
+        # Configure docker
+        gcloud auth configure-docker
+        
+        # Build and push image
+        docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/validateio-frontend .
+        docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/validateio-frontend
+        
+        # Deploy to Cloud Run
+        gcloud run deploy validateio-frontend \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/validateio-frontend \
+          --region us-central1 \
+          --platform managed \
+          --allow-unauthenticated \
+          --port 3000 \
+          --set-env-vars "NEXT_PUBLIC_API_URL=https://validateio-backend-${{ secrets.GCP_PROJECT_NUMBER }}.us-central1.run.app"
+          
+        echo "Frontend deployed successfully!"
+        echo "URL: $(gcloud run services describe validateio-frontend --region us-central1 --format 'value(status.url)')"
